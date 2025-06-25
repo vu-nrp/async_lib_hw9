@@ -38,7 +38,7 @@ jobs:
         run: sudo apt install graphviz
       # Create documentation   
       - name: 'Create documentation'     
-        run: doxygen ./lib/Doxyfile
+        run: doxygen
       # Upload documentation artifact
       - name: 'Upload documentation artifact'
         uses: actions/upload-pages-artifact@v3
