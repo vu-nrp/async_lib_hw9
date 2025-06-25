@@ -4,9 +4,8 @@
 #include "async.h"
 
 //!
-//! \brief main
+//! \brief main - program main function
 //!
-
 int main(int argc, char **argv)
 {
 #ifdef DEBUG_ON
