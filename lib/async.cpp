@@ -120,7 +120,7 @@ Context::Context(const size_t &n) :
 }
 
 //!
-//! \brief init
+//! \brief init - initialize library
 //!
 void init()
 {
@@ -206,7 +206,7 @@ void init()
 }
 
 //!
-//! \brief deinit
+//! \brief deinit - deinit library
 //!
 void deinit()
 {
@@ -215,9 +215,9 @@ void deinit()
 }
 
 //!
-//! \brief connect
-//! \param blockSize
-//! \return
+//! \brief connect - function of connction to ...
+//! \param blockSize - count commands in static block
+//! \return descriptor of connection
 //!
 Handle connect(const std::size_t &blockSize)
 {
@@ -228,8 +228,8 @@ Handle connect(const std::size_t &blockSize)
 }
 
 //!
-//! \brief receive
-//! \param handle
+//! \brief receive - receve block of data and process it
+//! \param handle - connection descriptor
 //! \param dataBlock
 //! \param dataBlockSize
 //!
@@ -241,8 +241,8 @@ void receive(const Handle &handle, const char *dataBlock, const std::size_t &dat
 }
 
 //!
-//! \brief disconnect
-//! \param handle
+//! \brief disconnect - close connection
+//! \param handle - connection descriptor
 //!
 void disconnect(const Handle &handle)
 {
