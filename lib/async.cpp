@@ -3,6 +3,7 @@
 #include <memory>
 #include <thread>
 #include <fstream>
+#include <assert.h>
 #include <iostream>
 #include <algorithm>
 #include <condition_variable>
@@ -92,21 +93,26 @@ std::once_flag createExtraThreadFlag;
 //!
 //! \brief pushCommandsBlock
 //! \param time
-//! \param commands
+//! \param commands - блок команд для печати, если блок пустой то это признак завершения работы
 //!
 void pushCommandsBlock(const std::time_t &time, const CommandsPack &commands)
 {
+    // консольное логирование
     {
         std::lock_guard<std::mutex> lock(receiveCoutMutex);
         commandsCoutList.push_back(commands);
     }
     receiveCoutVar.notify_all();
 
+    // файловое логирование
     {
         std::lock_guard<std::mutex> lock(receiveFilesMutex);
         commandsFilesList.push_back({time, commands});
     }
-    receiveFilesVar.notify_one();
+    if (commands.empty())
+        receiveFilesVar.notify_all();
+    else
+        receiveFilesVar.notify_one();
 }
 
 //!
@@ -131,77 +137,125 @@ void init()
         auto consoleLog = []()
         {
             std::vector<CommandsPack> data;
+            data.reserve(10);
+
+            auto printData = [&data]()
+            {
+                for (const auto &commands: data) {
+                    if (commands.empty())
+                        continue;
+
+                    // печать в консоль
+                    std::cout << "bulk: " << packToString(commands, ", ") << std::endl;
+                }
+
+                data.clear();
+            };
+
+            auto swapData = [&data]()
+            {
+                data.swap(commandsCoutList);
+                assert(commandsCoutList.size() == 0);
+            };
+
+            // выгребаем из очереди
             while (!finish) {
                 {
                     // ждём данных
                     std::unique_lock<std::mutex> lk(receiveCoutMutex);
                     receiveCoutVar.wait(lk, []{ return !commandsCoutList.empty(); });
-                    if (finish)
-                        break;
+
                     // забираем все данные
-                    data.swap(commandsCoutList);
+                    assert(commandsCoutList.size() > 0);
+                    swapData();
                 }
-
-                for (const auto &item: data) {
-                    if (finish)
-                        break;
-
-                    // печать в консоль
-                    std::cout << "bulk: " << packToString(item, ", ") << std::endl;
-                }
-
-                data.clear();
+                printData();
             }
+
+            // выгребаем последнее, если есть
+            {
+                std::lock_guard<std::mutex> lock(receiveCoutMutex);
+                swapData();
+            }
+            printData();
+
+#ifdef DEBUG_ON
+            // завершение
             std::cout << "console log thread finished!" << std::endl;
+#endif
         };
 
         auto filesLog = [](const Id &id)
         {
+            int iter = 0;
             std::vector<std::pair<std::time_t, CommandsPack>> data;
+            data.reserve(10);
+
+            auto printData = [id, &iter, &data]()
+            {
+                for (const auto &commandsInfo: data) {
+                    if (commandsInfo.second.empty())
+                        continue;
+
+                    // печать в файл
+                    static const auto fmt = "./bulk%.10zu_id%d_%d.log";
+                    static const int sz = std::snprintf(nullptr, 0, fmt, commandsInfo.first, id, iter);
+                    std::string fileName(sz, '\0');
+                    std::sprintf(fileName.data(), fmt, commandsInfo.first, id, iter);
+
+                    std::ofstream file;
+                    file.open(fileName);
+                    const auto data = packToString(commandsInfo.second, "\n");
+                    file.write(data.c_str(), data.length());
+                    file.close();
+
+                    iter += 1;
+                }
+
+                data.clear();
+            };
+
+            auto swapData = [&data]()
+            {
+                data.swap(commandsFilesList);
+                assert(commandsFilesList.size() == 0);
+            };
+
+            // выгребаем из очереди
             while (!finish) {
                 {
                     // ждём данных
                     std::unique_lock<std::mutex> lk(receiveFilesMutex);
                     receiveFilesVar.wait(lk, []{ return !commandsFilesList.empty(); });
-                    if (finish)
-                        break;
+
                     // забираем все данные
-                    data.swap(commandsFilesList);
+                    assert(commandsFilesList.size() > 0);
+                    swapData();
                 }
-
-                for (const auto &item: data) {
-                    if (finish)
-                        break;
-
-                    // печать в файл
-                    static const auto fmt = "./bulk%.10zu_%d.log";
-                    static const int sz = std::snprintf(nullptr, 0, fmt, item.first, id);
-                    std::string fileName(sz, '\0');
-                    std::sprintf(fileName.data(), fmt, item.first, id);
-
-                    std::ofstream file;
-                    file.open(fileName);
-                    const auto data = packToString(item.second, "\n");
-                    file.write(data.c_str(), data.length());
-                    file.close();
-                }
-
-                data.clear();
+                printData();
             }
-            std::cout << "console log thread finished!" << std::endl;
+
+            // выгребаем последнее, если есть
+            {
+                std::lock_guard<std::mutex> lock(receiveFilesMutex);
+                swapData();
+            }
+            printData();
+
+#ifdef DEBUG_ON
+            // завершение
+            std::string msg {"file log thread #"};
+            msg += (std::to_string(id) + " finished!\n");
+            std::cout << msg;
+#endif
         };
 
         // console log thread
         threadsList.emplace(new std::thread(consoleLog));
-        threadsList.end()->get()->join();
-
         // two file log thread
         Id id = 0;
         threadsList.emplace(new std::thread(filesLog, ++id));
-        threadsList.end()->get()->join();
-
         threadsList.emplace(new std::thread(filesLog, ++id));
-        threadsList.end()->get()->join();
     });
 }
 
@@ -212,6 +266,9 @@ void deinit()
 {
     finish = true;
     pushCommandsBlock(std::time(nullptr), {});
+
+    for (auto thread: threadsList)
+        thread->join();
 }
 
 //!

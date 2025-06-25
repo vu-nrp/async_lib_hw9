@@ -6,7 +6,7 @@ set(PROJECT_VESRION 0.0.${PATCH_VERSION})
 project(async VERSION ${PROJECT_VESRION})
 
 # main lib
-add_library(${PROJECT_NAME} SHARED
+add_library(${PROJECT_NAME}
     lib/types.h
     lib/async.h
     lib/async.cpp
@@ -15,12 +15,17 @@ add_library(${PROJECT_NAME} SHARED
 )
 
 # test executable
-add_executable(${PROJECT_NAME}_test test/main.cpp)
+add_executable(${PROJECT_NAME}_test
+    test/main.cpp
+)
 
 set_target_properties(${PROJECT_NAME} ${PROJECT_NAME}_test PROPERTIES
     CXX_STANDARD 17
     CXX_STANDARD_REQUIRED ON
 )
+
+# uncomment for inplace debug
+# add_compile_definitions(DEBUG_ON)
 
 #
 target_include_directories(${PROJECT_NAME}
