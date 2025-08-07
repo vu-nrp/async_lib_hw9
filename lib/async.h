@@ -19,7 +19,7 @@ void deinit();
 //! \param blockSize - count commands in static block
 //! \return descriptor of connection
 //!
-Handle connect(const std::size_t &blockSize);
+Handle connect(const size_t &blockSize);
 
 //!
 //! \brief receive - receve block of data and process it
@@ -27,7 +27,7 @@ Handle connect(const std::size_t &blockSize);
 //! \param dataBlock
 //! \param dataBlockSize
 //!
-void receive(const Handle &handle, const char *dataBlock, const std::size_t &dataBlockSize);
+void receive(const Handle &handle, const char *dataBlock, const size_t &dataBlockSize);
 
 //!
 //! \brief disconnect - close connection

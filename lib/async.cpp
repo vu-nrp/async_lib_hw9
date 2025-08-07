@@ -38,13 +38,11 @@ std::string packToString(const CommandsPack &pack, const std::string &delim)
 class Context
 {
 public:
-    using Shared = std::shared_ptr<Context>;
+    explicit Context(const size_t &n);
 
-    Context(const size_t &n);
-
-    void processData(const char *dataBlock, const std::size_t &dataBlockSize)
+    void processData(const char *dataBlock, const size_t &dataBlockSize)
     {
-        for (std::size_t i = 0; i < dataBlockSize; ++i, ++dataBlock){
+        for (size_t i = 0; i < dataBlockSize; ++i, ++dataBlock){
             if (*dataBlock != '\n' ) {
                 m_buffer.append(std::string(dataBlock, 1));
             } else if (!m_buffer.empty()) {
@@ -65,13 +63,15 @@ private:
 
 };
 
+using ContextPtr = std::shared_ptr<Context>;
+
 //
 // vars
 //
 
 // для работы со списком дескриптором контекста
 std::mutex handleMutex;
-std::set<Context::Shared> handlesList;
+std::set<ContextPtr> handlesList;
 
 //
 std::set<std::shared_ptr<std::thread>> threadsList;
@@ -276,7 +276,7 @@ void deinit()
 //! \param blockSize - count commands in static block
 //! \return descriptor of connection
 //!
-Handle connect(const std::size_t &blockSize)
+Handle connect(const size_t &blockSize)
 {
     std::lock_guard<std::mutex> lock(handleMutex);
     const auto handle = new Context(blockSize);
@@ -290,7 +290,7 @@ Handle connect(const std::size_t &blockSize)
 //! \param dataBlock
 //! \param dataBlockSize
 //!
-void receive(const Handle &handle, const char *dataBlock, const std::size_t &dataBlockSize)
+void receive(const Handle &handle, const char *dataBlock, const size_t &dataBlockSize)
 {
     const auto context = reinterpret_cast<Context *>(handle);
     if (context != nullptr)
@@ -304,7 +304,7 @@ void receive(const Handle &handle, const char *dataBlock, const std::size_t &dat
 void disconnect(const Handle &handle)
 {
     std::lock_guard<std::mutex> lock(handleMutex);
-    const auto context = std::find_if(handlesList.cbegin(), handlesList.cend(), [handle](const Context::Shared &item)
+    const auto context = std::find_if(handlesList.cbegin(), handlesList.cend(), [handle](const ContextPtr &item)
     {
         return (item.get() == handle);
     });

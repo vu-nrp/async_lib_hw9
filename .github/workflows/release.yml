@@ -65,7 +65,7 @@ jobs:
           draft: false
           prerelease: false
       # Upload Release Asset Step
-      - name: 'Upload Release Asset Step for hw#8'
+      - name: 'Upload Release Asset Step for hw#9'
         id: upload_release_asset
         uses: actions/upload-release-asset@v1
         env:
